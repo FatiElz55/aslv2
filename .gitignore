@@ -1,0 +1,20 @@
+# Keep the Vercel deploy copy tiny
+__pycache__/
+*.py[cod]
+.python-version
+.venv/
+venv/
+.env
+.env.*
+
+# Never ship datasets/models/docs/notebooks in the deploy copy
+data/
+dataset_clean/
+*.zip
+model.pkl
+*.joblib
+*.npy
+*.ipynb
+*.doc
+*.docx
+

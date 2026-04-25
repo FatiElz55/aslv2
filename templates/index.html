@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>ASL Alphabet — Live Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0c0c0b;
+        --surface: #161615;
+        --surface-2: #1c1c1a;
+        --text: #f2f0ec;
+        --muted: #8c8a85;
+        --border: rgba(255, 255, 255, 0.1);
+        --accent: #b8956a;
+        --danger: #c97b7b;
+        --cam: #000;
+      }
+      html[data-theme="light"] {
+        color-scheme: light;
+        --bg: #f5f3ef;
+        --surface: #fffcf7;
+        --surface-2: #f0ebe3;
+        --text: #1a1917;
+        --muted: #5e5c58;
+        --border: rgba(0, 0, 0, 0.09);
+        --accent: #7a5c32;
+        --danger: #a84848;
+        --cam: #0a0a09;
+      }
+      :root {
+        --mono: "IBM Plex Mono", Consolas, monospace;
+        --font: "Manrope", system-ui, sans-serif;
+        --r: 12px;
+        --rs: 10px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 2rem 1.1rem 3rem;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1.2rem 1.2rem;
+      }
+      h1 {
+        margin: 0 0 0.35rem 0;
+        font-size: 1.55rem;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0.55rem 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      code,
+      pre {
+        font-family: var(--mono);
+      }
+      .row {
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.35rem 0.65rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .row b {
+        color: var(--text);
+        font-weight: 700;
+      }
+      .grid {
+        margin-top: 1rem;
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 0.75rem;
+      }
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .note {
+        border-left: 3px solid var(--accent);
+        padding: 0.65rem 0.8rem;
+        background: rgba(184, 149, 106, 0.08);
+        border-radius: var(--rs);
+      }
+      pre {
+        margin: 0.6rem 0 0 0;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: var(--rs);
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--text);
+      }
+      a {
+        color: var(--text);
+        text-decoration-color: rgba(184, 149, 106, 0.6);
+      }
+      a:hover {
+        text-decoration-color: rgba(184, 149, 106, 1);
+      }
+      .small {
+        font-size: 0.9rem;
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .cam {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        background: var(--cam);
+        display: block;
+      }
+      .cam > video,
+      .cam > canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .meta {
+        padding: 0.75rem 0.85rem;
+        background: var(--surface-2);
+        border-top: 1px solid var(--border);
+        display: grid;
+        gap: 0.55rem;
+      }
+      .big {
+        font-size: 2.6rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      .bar {
+        height: 4px;
+        background: var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .bar > div {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 0.08s linear;
+      }
+      .err {
+        display: none;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--danger);
+        border-radius: var(--rs);
+        color: var(--danger);
+        background: rgba(201, 123, 123, 0.08);
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 0.55rem 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--muted);
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="row" title="This is the Vercel deploy copy">
+          <b>Live demo</b> <span>•</span> <span>browser MediaPipe + server model</span>
+        </div>
+
+        <h1 style="margin-top: 0.9rem">ASL Alphabet — SignWriter</h1>
+        <p>
+          This version runs hand-landmarks in your browser (MediaPipe JS) and sends a 63-number vector to
+          <code>POST /predict</code> on the server, which uses your <code>model_svm.pkl</code>.
+        </p>
+
+        <div class="grid">
+          <div>
+            <div class="panel" aria-label="Camera preview">
+              <div class="cam">
+                <video id="video" playsinline autoplay muted></video>
+                <canvas id="overlay"></canvas>
+              </div>
+              <div class="meta">
+                <div class="big" id="pred">—</div>
+                <div class="muted" id="conf"></div>
+                <div class="bar" aria-label="Confidence">
+                  <div id="barFill"></div>
+                </div>
+                <div class="err" id="err"></div>
+                <button class="btn" id="btnStart">Start camera</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="note">
+              <p style="margin: 0">
+                Notes:
+                <br />- You’ll be asked for camera permission.
+                <br />- The model runs on the server; landmarks run in the browser.
+                <br />- Endpoint: <code>POST /predict</code>
+              </p>
+            </div>
+            <p class="small" style="margin-top: 0.8rem">
+              Want the original WebSocket version? Run it locally from the repo root:
+            </p>
+            <pre>pip install -r requirements.txt
+python app.py</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("overlay");
+      const ctx = canvas.getContext("2d");
+      const predEl = document.getElementById("pred");
+      const confEl = document.getElementById("conf");
+      const barFill = document.getElementById("barFill");
+      const errEl = document.getElementById("err");
+      const btnStart = document.getElementById("btnStart");
+
+      let running = false;
+      let lastSend = 0;
+
+      function setErr(msg) {
+        if (!msg) {
+          errEl.style.display = "none";
+          errEl.textContent = "";
+        } else {
+          errEl.style.display = "block";
+          errEl.textContent = msg;
+        }
+      }
+
+      function normVector(landmarks) {
+        // landmarks: 21 points with x,y,z in [0..1] (z ~ relative)
+        const w = landmarks[0];
+        const raw = landmarks.map((p) => [p.x, p.y, p.z || 0]);
+        const centered = raw.map(([x, y, z]) => [x - w.x, y - w.y, z - (w.z || 0)]);
+        const flat = centered.flat();
+        let maxAbs = 1e-6;
+        for (const v of flat) maxAbs = Math.max(maxAbs, Math.abs(v));
+        return flat.map((v) => v / maxAbs);
+      }
+
+      async function predict(vec) {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ vector: vec }),
+        });
+        return await res.json();
+      }
+
+      function drawLandmarks(landmarks) {
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(184,149,106,0.9)";
+        ctx.fillStyle = "rgba(242,240,236,0.9)";
+        for (const p of landmarks) {
+          ctx.beginPath();
+          ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      async function start() {
+        if (running) return;
+        running = true;
+        setErr("");
+        btnStart.disabled = true;
+
+        canvas.width = 640;
+        canvas.height = 480;
+
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
+        });
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 0,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        hands.onResults(async (results) => {
+          if (!running) return;
+          const now = Date.now();
+
+          if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+            predEl.textContent = "—";
+            confEl.textContent = "";
+            barFill.style.width = "0%";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+          }
+
+          const lm = results.multiHandLandmarks[0];
+          drawLandmarks(lm);
+
+          // throttle server calls (about 6-7/s)
+          if (now - lastSend < 150) return;
+          lastSend = now;
+
+          try {
+            const vec = normVector(lm);
+            const out = await predict(vec);
+            if (!out || !out.ok) {
+              setErr(out?.error || "Prediction error");
+              return;
+            }
+            setErr("");
+            predEl.textContent = out.label || "?";
+            const c = Math.max(0, Math.min(1, Number(out.confidence || 0)));
+            confEl.textContent = `${Math.round(c * 100)}%`;
+            barFill.style.width = `${Math.round(c * 100)}%`;
+          } catch (e) {
+            setErr("Server error. Try refresh.");
+          }
+        });
+
+        const cam = new Camera(video, {
+          onFrame: async () => {
+            if (!running) return;
+            await hands.send({ image: video });
+          },
+          width: 640,
+          height: 480,
+        });
+
+        try {
+          await cam.start();
+        } catch (e) {
+          setErr("Camera permission denied or unavailable.");
+          running = false;
+          btnStart.disabled = false;
+        }
+      }
+
+      btnStart.addEventListener("click", start);
+    </script>
+  </body>
+</html>
+
