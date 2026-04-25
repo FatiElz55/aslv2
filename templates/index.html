@@ -179,7 +179,11 @@
       max-height: min(50vh, 400px);
       background: var(--cam);
     }
-    .preview-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .preview-frame img,
+    .preview-frame canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* Mirror preview (selfie-style) */
+    #previewCanvas { transform: scaleX(-1); }
 
     .hold-wrap {
       padding: 0.7rem 0.9rem;
@@ -355,11 +359,7 @@
     <div class="live-panel" aria-label="Camera and output">
       <div class="live-panel__inner">
         <div class="preview-frame">
-          <img
-            id="preview"
-            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-            alt="Live hand tracking preview"
-          />
+          <canvas id="previewCanvas" width="640" height="480" aria-label="Live camera preview"></canvas>
         </div>
         <div class="hold-wrap">
           <div class="hold-row">
@@ -456,7 +456,8 @@
     const video = document.getElementById("video");
     const cap = document.getElementById("cap");
     const ctx = cap.getContext("2d");
-    const preview = document.getElementById("preview");
+    const previewCanvas = document.getElementById("previewCanvas");
+    const previewCtx = previewCanvas.getContext("2d");
     const letterEl = document.getElementById("letter");
     const confEl = document.getElementById("conf");
     const writtenEl = document.getElementById("written");
@@ -506,7 +507,7 @@
         if (autoReadTimer) clearTimeout(autoReadTimer);
         autoReadTimer = setTimeout(() => speakWrittenText(false), 650);
       }
-      if (data.preview) preview.src = "data:image/jpeg;base64," + data.preview;
+      // preview is drawn locally (canvas)
     }
 
     async function startCamera() {
@@ -571,6 +572,7 @@
       hands.setOptions({
         maxNumHands: 1,
         modelComplexity: 0,
+        selfieMode: true,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
       });
@@ -600,8 +602,8 @@
           return;
         }
 
-        // throttle server calls ~ 6-7 / sec
-        if (now - lastSend < 150 || framePending) return;
+        // throttle server calls (~8 / sec) for faster response
+        if (now - lastSend < 120 || framePending) return;
         lastSend = now;
         framePending = true;
 
@@ -634,13 +636,17 @@
       camera = new Camera(video, {
         onFrame: async () => {
           if (!hands) return;
-          // Update the UI preview locally (server no longer sends preview frames).
-          // Throttle a bit to reduce CPU usage.
+          // Update the UI preview locally (fast: draw to canvas, no base64).
           const now = Date.now();
-          if (now - lastPreview > 90 && video.readyState >= 2) {
+          if (now - lastPreview > 50 && video.readyState >= 2) {
             lastPreview = now;
-            ctx.drawImage(video, 0, 0, cap.width, cap.height);
-            preview.src = cap.toDataURL("image/jpeg", 0.6);
+            previewCtx.drawImage(
+              video,
+              0,
+              0,
+              previewCanvas.width,
+              previewCanvas.height
+            );
           }
           await hands.send({ image: video });
         },
