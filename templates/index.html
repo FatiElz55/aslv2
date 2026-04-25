@@ -560,6 +560,7 @@
     let hands = null;
     let camera = null;
     let lastSend = 0;
+    let lastPreview = 0;
 
     async function initHands() {
       if (hands) return hands;
@@ -633,6 +634,14 @@
       camera = new Camera(video, {
         onFrame: async () => {
           if (!hands) return;
+          // Update the UI preview locally (server no longer sends preview frames).
+          // Throttle a bit to reduce CPU usage.
+          const now = Date.now();
+          if (now - lastPreview > 90 && video.readyState >= 2) {
+            lastPreview = now;
+            ctx.drawImage(video, 0, 0, cap.width, cap.height);
+            preview.src = cap.toDataURL("image/jpeg", 0.6);
+          }
           await hands.send({ image: video });
         },
         width: 640,
