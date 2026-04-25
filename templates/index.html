@@ -405,6 +405,11 @@
   </main>
 
   <script>
+    // MediaPipe (browser)
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
+  <script>
     (function initTheme() {
       const KEY = "signwriter-theme";
       const root = document.documentElement;
@@ -513,11 +518,22 @@
       await video.play();
     }
 
-    async function predictFrame(b64jpeg) {
-      const res = await fetch("/predict_frame", {
+    function normVector(landmarks) {
+      // landmarks: 21 points with x,y,z in [0..1] (z ~ relative)
+      const w = landmarks[0];
+      const raw = landmarks.map((p) => [p.x, p.y, p.z || 0]);
+      const centered = raw.map(([x, y, z]) => [x - w.x, y - w.y, z - (w.z || 0)]);
+      const flat = centered.flat();
+      let maxAbs = 1e-6;
+      for (const v of flat) maxAbs = Math.max(maxAbs, Math.abs(v));
+      return flat.map((v) => v / maxAbs);
+    }
+
+    async function predictVector(vec) {
+      const res = await fetch("/predict", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image: b64jpeg }),
+        body: JSON.stringify({ vector: vec }),
       });
       return await res.json();
     }
@@ -532,7 +548,8 @@
       if (holdCount >= HOLD_NEEDED) {
         if (currentLetter && currentLetter.toLowerCase() !== "nothing") {
           if (currentLetter.toLowerCase() === "space") writtenEl.value += " ";
-          else if (currentLetter.toLowerCase() === "del") writtenEl.value = writtenEl.value.slice(0, -1);
+          else if (currentLetter.toLowerCase() === "del")
+            writtenEl.value = writtenEl.value.slice(0, -1);
           else writtenEl.value += currentLetter;
         }
         holdCount = 0;
@@ -540,34 +557,89 @@
       return writtenEl.value;
     }
 
-    async function sendFrameIfReady() {
-      if (framePending) return;
-      if (video.readyState < 2) return;
-      ctx.drawImage(video, 0, 0, cap.width, cap.height);
-      const jpeg = cap.toDataURL("image/jpeg", 0.55).split(",")[1];
-      framePending = true;
-      try {
-        const out = await predictFrame(jpeg);
-        if (!out || out.ok === false) {
-          setConn(out?.error || "Prediction error", true);
+    let hands = null;
+    let camera = null;
+    let lastSend = 0;
+
+    async function initHands() {
+      if (hands) return hands;
+      hands = new Hands({
+        locateFile: (file) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 0,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+      return hands;
+    }
+
+    async function startPipeline() {
+      await initHands();
+      setConn("", false);
+
+      hands.onResults(async (results) => {
+        const now = Date.now();
+        if (
+          !results.multiHandLandmarks ||
+          results.multiHandLandmarks.length === 0
+        ) {
+          currentLetter = "";
+          holdCount = 0;
+          applyState({
+            letter: "",
+            confidence: 0,
+            hold_count: 0,
+            hold_needed: HOLD_NEEDED,
+            text: writtenEl.value || "",
+            preview: "",
+          });
           return;
         }
-        setConn("", false);
-        const letter = out.label || "";
-        const text = updateHoldAndText(letter);
-        applyState({
-          letter,
-          confidence: Number(out.confidence || 0),
-          hold_count: holdCount,
-          hold_needed: HOLD_NEEDED,
-          text,
-          preview: out.preview || "",
-        });
-      } catch (e) {
-        setConn("Server error. Refresh the page to retry.", true);
-      } finally {
-        framePending = false;
-      }
+
+        // throttle server calls ~ 6-7 / sec
+        if (now - lastSend < 150 || framePending) return;
+        lastSend = now;
+        framePending = true;
+
+        try {
+          const lm = results.multiHandLandmarks[0];
+          const vec = normVector(lm);
+          const out = await predictVector(vec);
+          if (!out || out.ok === false) {
+            setConn(out?.error || "Prediction error", true);
+            return;
+          }
+          setConn("", false);
+          const letter = out.label || "";
+          const text = updateHoldAndText(letter);
+          applyState({
+            letter,
+            confidence: Number(out.confidence || 0),
+            hold_count: holdCount,
+            hold_needed: HOLD_NEEDED,
+            text,
+            preview: "", // no server-side preview in lightweight deploy
+          });
+        } catch (e) {
+          setConn("Server error. Refresh the page to retry.", true);
+        } finally {
+          framePending = false;
+        }
+      });
+
+      camera = new Camera(video, {
+        onFrame: async () => {
+          if (!hands) return;
+          await hands.send({ image: video });
+        },
+        width: 640,
+        height: 480,
+      });
+
+      await camera.start();
     }
 
     document.getElementById("btnSpace").onclick = () => {
@@ -641,12 +713,10 @@
       }
     });
 
+    // Lightweight deploy: MediaPipe runs in the browser, server only predicts.
+    // (This avoids huge backend dependencies and Vercel size limits.)
     startCamera()
-      .then(() => {
-        clearError();
-        if (tickId) clearInterval(tickId);
-        tickId = setInterval(sendFrameIfReady, 120);
-      })
+      .then(startPipeline)
       .catch((err) => {
         console.error(err);
         setConn("Camera permission denied or unavailable.", true);

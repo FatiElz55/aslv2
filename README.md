@@ -13,7 +13,7 @@ In Vercel, set the **Root Directory** to `asl/`.
 Endpoints:
 - `GET /` (SignWriter UI)
 - `GET /health`
-- `POST /predict_frame` (send webcam JPEG base64; server runs MediaPipe + SVM)
+- `POST /predict` (send 63-number hand-landmark vector; server runs SVM)
 
 ## Run the full realtime app locally
 
@@ -31,3 +31,8 @@ The deployed backend loads `asl/model_svm.pkl`.
 Options:
 - Put **`model_svm.pkl` inside `asl/`** before deploying.
 - Or set environment variable **`MODEL_URL`** to a direct-download URL of the file; the server will download it at runtime.
+
+## Note about deploy size (Vercel)
+
+To stay under Vercel’s serverless size limits, this deploy copy runs **MediaPipe in the browser** (JS),
+and sends only the 63-number vector to the backend. This keeps the backend lightweight and deployable.
