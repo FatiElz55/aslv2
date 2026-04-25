@@ -2,7 +2,7 @@
 
 This `asl/` folder is a **deployable copy** of the project intended for hosting (ex: **Vercel**).
 
-It intentionally **does not** include:
+It intentionally **does not** include: 
 - datasets
 - the trained model file (`model_svm.pkl`) (you must provide it for hosting)
 
